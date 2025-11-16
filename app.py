@@ -1,4 +1,4 @@
-# streamlit_app_gabungan_v11_final_fixed.py
+# app.py (Versi Hosting - Tanpa Scraper)
 import streamlit as st
 import pandas as pd
 import time
@@ -7,11 +7,7 @@ import string
 import os 
 import base64 
 
-# --- Impor untuk Scraper ---
-from selenium import webdriver
-from selenium.webdriver.firefox.service import Service
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.common.by import By
+# --- Impor Selenium DIHAPUS ---
 
 # --- Impor untuk ML & Plotly ---
 import plotly.express as px
@@ -49,61 +45,7 @@ NEGATION_PHRASES = {
     'kurang membantu': -2,
 }
 
-# ------------------ Fungsi Scraper ------------------
-def get_tweet(element):
-    try:
-        try: user = element.find_element(By.XPATH, ".//*[contains(text(), '@')]").text
-        except: user = None
-        try: text = element.find_element(By.XPATH, ".//div[@lang]").text
-        except: text = None
-        try: date = element.find_element(By.XPATH, ".//time").get_attribute("datetime")
-        except: date = None
-        try: reply_to_user = element.find_element(By.XPATH, ".//div[@dir='ltr']//a[contains(@href, '/')]").text
-        except: reply_to_user = None
-        try: tweet_link = element.find_element(By.XPATH, ".//a[contains(@href, '/status/')]").get_attribute("href")
-        except: tweet_link = None
-        try: media_links = [m.get_attribute("src") for m in element.find_elements(By.XPATH, ".//img[contains(@src, 'media')]")]
-        except: media_links = []
-        tweet_data = [user, text, date, tweet_link, media_links, reply_to_user]
-        return tweet_data
-    except Exception as e:
-        return None
-
-def scrape_tweets(driver, max_scroll=15, wait_time=2):
-    tweets_data = []
-    ids = set()
-    last_height = driver.execute_script("return document.body.scrollHeight")
-    
-    progress_bar = st.progress(0)
-    scroll_text = st.empty()
-
-    for i in range(max_scroll):
-        scroll_text.write(f"Scrolling: {i+1}/{max_scroll} ...") 
-        progress_bar.progress((i+1)/max_scroll)
-        
-        tweets = driver.find_elements(By.XPATH, "//article[@data-testid='tweet']")
-        
-        for tweet in tweets:
-            data = get_tweet(tweet)
-            if data and data[3]:
-                tweet_id = data[3]
-                if tweet_id not in ids:
-                    tweets_data.append(data)
-                    ids.add(tweet_id)
-        
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(wait_time)
-        new_height = driver.execute_script("return document.body.scrollHeight")
-        
-        if new_height == last_height:
-            st.warning("Mencapai akhir halaman.")
-            break
-        last_height = new_height
-        
-    progress_bar.empty()
-    scroll_text.empty()
-    st.write(f"Total {len(tweets_data)} tweet unik ditemukan.")
-    return tweets_data
+# --- Fungsi Scraper (get_tweet, scrape_tweets) DIHAPUS ---
 
 # ------------------ Fungsi Preprocessing ------------------
 def clean_text(text: str) -> str:
@@ -179,8 +121,6 @@ def train_and_evaluate(df: pd.DataFrame, text_col='clean_text', label_col='senti
 
 st.set_page_config(page_title="Analisis Sentimen ChatAI", layout="wide")
 
-# --- KODE CSS DIHAPUS ---
-
 # --- Sidebar ---
 if os.path.exists("untar_logo.png"):
     st.sidebar.image("untar_logo.png", width=150)
@@ -212,6 +152,7 @@ if not st.session_state["logged_in"]:
 
 # --- Tampilan Setelah Login ---
 st.sidebar.success("Anda sudah login.")
+# --- "Scrape Data" TETAP ADA di navigasi ---
 page = st.sidebar.radio("Pilih halaman:", ["Dashboard", "Scrape Data", "Upload & Proses Data", "Visualisasi Hasil"])
 
 # --- Halaman Dashboard ---
@@ -239,9 +180,6 @@ if page == "Dashboard":
     untuk memilih model terbaik dan hasilnya disajikan dalam dashboard visual interaktif ini.
     """)
     
-    # ===============================================
-    # ===      BAGIAN ALASAN PENGAMBILAN TOPIK    ===
-    # ===============================================
     st.header("Alasan Pengambilan Topik (Latar Belakang)")
     st.markdown("""
     Alasan utama di balik penelitian ini adalah maraknya penggunaan ChatAI (seperti ChatGPT, Gemini, atau Copilot) oleh mahasiswa sebagai asisten digital untuk membantu menyusun ide, menjawab pertanyaan, hingga mengerjakan tugas kuliah.
@@ -264,14 +202,14 @@ if page == "Dashboard":
         if os.path.exists("gambar_1_metodologi.png"):
             st.image("gambar_1_metodologi.png", caption="Sumber: Proposal Skripsi (Gambar 1)")
         else:
-            st.error("File `gambar_1_metodologi.png` tidak ditemukan. Harap screenshot Gambar 1 dari PDF Anda.")
+            st.error("File `gambar_1_metodologi.png` tidak ditemukan.")
         
         st.markdown("""
         [cite_start]Bagan ini menunjukkan 4 langkah utama penelitian [cite: 121-124]:
-        1.  **Pengumpulan Data:** Mengambil data dari Twitter dan Kuesioner. Halaman **'Scrape Data'** dan **'Upload Data'** adalah implementasi dari tahap ini.
-        2.  **Preprocessing:** Membersihkan data (cleaning, tokenizing, stemming) dan memberi label (lexicon). Ini terjadi secara otomatis saat Anda menekan tombol 'Mulai Proses Sentimen'.
+        1.  **Pengumpulan Data:** Mengambil data dari Twitter dan Kuesioner. (Tahap scraping data Twitter dilakukan secara lokal).
+        2.  **Preprocessing:** Membersihkan data (cleaning, tokenizing, stemming) dan memberi label (lexicon).
         3.  **Penerapan Algoritma:** Menggunakan TF-IDF untuk ekstraksi fitur dan melatih model Naive Bayes serta SVM.
-        4.  **Evaluasi dan Analisis:** Menghitung F1-Score dan memvisualisasikan hasil. Halaman **'Visualisasi Hasil'** adalah output dari tahap ini.
+        4.  **Evaluasi dan Analisis:** Menghitung F1-Score dan memvisualisasikan hasil.
         """)
 
     with tab_alur:
@@ -279,7 +217,7 @@ if page == "Dashboard":
         if os.path.exists("gambar_2_alur_sistem.png"):
             st.image("gambar_2_alur_sistem.png", caption="Sumber: Proposal Skripsi (Gambar 2)")
         else:
-            st.error("File `gambar_2_alur_sistem.png` tidak ditemukan. Harap screenshot Gambar 2 dari PDF Anda.")
+            st.error("File `gambar_2_alur_sistem.png` tidak ditemukan.")
         
         st.markdown("""
         [cite_start]Diagram ini mendetailkan proses yang terjadi di dalam aplikasi ini [cite: 308-336]:
@@ -292,9 +230,6 @@ if page == "Dashboard":
         * **Visualisasi:** Hasilnya ditampilkan dalam bentuk grafik dan tabel di halaman **'Visualisasi Hasil'**.
         """)
     
-    # ===============================================
-    # ===       PERBAIKAN MOCKUP DIMULAI SINI     ===
-    # ===============================================
     st.markdown("---")
     st.header("🖼️ Tampilan Sistem (Mockup)")
     st.info("Berikut adalah tampilan fitur utama dari sistem yang dirancang, mulai dari upload data mentah hingga visualisasi hasil analisis sentimen.")
@@ -303,88 +238,46 @@ if page == "Dashboard":
     
     with col1:
         st.subheader("1. Upload Data")
-        # PERBAIKAN: Menggunakan nama file yang benar: image_eabe02.jpg
-        if os.path.exists("apaae.png"): 
-            st.image("apaae.png", caption="Halaman 'Upload & Proses Data'")
+        if os.path.exists("image_eabe02.jpg"): 
+            st.image("image_eabe02.jpg", caption="Halaman 'Upload & Proses Data'")
         else:
-            st.warning("File 'apaae.png' tidak ditemukan.")
+            st.warning("File 'image_eabe02.jpg' tidak ditemukan.")
         st.markdown("Unggah data mentah (Twitter/Kuesioner) dan pilih kolom teks yang akan dianalisis.")
 
     with col2:
         st.subheader("2. Evaluasi Model")
-        # PERBAIKAN: Menggunakan nama file yang benar: image_ea6714.jpg
-        if os.path.exists("image_eabe02.png"): 
-            st.image("image_eabe02.png", caption="Perbandingan F1-Score di Halaman Visualisasi")
+        if os.path.exists("image_ea6714.jpg"): 
+            st.image("image_ea6714.jpg", caption="Perbandingan F1-Score di Halaman Visualisasi")
         else:
             st.warning("File 'image_ea6714.jpg' tidak ditemukan.")
         st.markdown("Sistem otomatis melatih Naive Bayes & SVM, lalu menampilkan perbandingan F1-Score.")
 
     with col3:
         st.subheader("3. Visualisasi Hasil")
-        # PERBAIKAN: Nama file ini sudah benar: image_eabe00.png
         if os.path.exists("image_eabe00.png"): 
             st.image("image_eabe00.png", caption="Grafik Distribusi Sentimen")
         else:
             st.warning("File 'image_eabe00.png' tidak ditemukan.")
         st.markdown("Lihat perbandingan sentimen Twitter vs Kuesioner dalam bentuk Pie Chart dan Bar Chart.")
-    # ===============================================
-    # ===        PERBAIKAN MOCKUP SELESAI         ===
-    # ===============================================
 
 
-# --- HALAMAN SCRAPE DATA ---
+# --- HALAMAN SCRAPE DATA (DIGANTI DENGAN PESAN) ---
 elif page == "Scrape Data":
     st.header("🕸️ Scrape Data dari X (Twitter)")
-    st.info("""
-    Halaman ini adalah implementasi dari **Tahap 1: Pengumpulan Data (Data Sekunder)**.
-    Data yang diambil dari Twitter bersifat spontan dan natural,
-    mencerminkan opini asli mahasiswa di media sosial.
+    st.warning("🔒 Fitur Scraping Dinonaktifkan di Versi Hosting")
+    st.markdown("""
+    Fitur *scraping* data secara langsung dari X (Twitter) menggunakan Selenium **tidak dapat dijalankan di server hosting publik** seperti Streamlit Community Cloud. 
+    
+    Fitur ini membutuhkan instalasi *driver* (GeckoDriver) dan *browser* (Firefox) di tingkat sistem operasi, yang tidak diizinkan di lingkungan server bersama.
+    
+    ### 👨‍💻 Alur Kerja untuk Demo/Presentasi:
+    1.  **Jalankan di Lokal:** Gunakan file Python versi lengkap (yang ada Selenium) di komputer lokal Anda untuk menjalankan fitur *scraping* ini.
+    2.  **Unduh Hasil:** Simpan hasil *scraping* sebagai file `.csv` (misal: `tweets_scraped.csv`).
+    3.  **Unggah ke Server:** Kembali ke aplikasi *hosting* ini, buka halaman **"Upload & Proses Data"**, dan unggah file `.csv` tersebut di tab "Proses Data Twitter".
     """)
+    
+    st.info("Halaman ini tetap ditampilkan untuk menunjukkan bahwa fitur *scraping* adalah bagian dari perancangan sistem, sesuai dengan **Tahap 1: Pengumpulan Data**.")
 
-    query = st.text_input("Kata kunci pencarian", value="ChatGPT")
-    max_scroll = st.slider("Jumlah scroll", 1, 50, 10)
-    gecko_path = st.text_input("Path geckodriver (contoh: C:\\geckodriver.exe)", value="C:\\Users\\armanta\\Downloads\\geckodriver.exe")
-    headless = st.checkbox("Headless mode (tanpa tampilan browser)", value=False) 
-
-    if "driver_active" not in st.session_state:
-        st.session_state.driver_active = False
-    if "driver" not in st.session_state:
-        st.session_state.driver = None
-
-    if not st.session_state.driver_active:
-        if st.button("Buka Firefox untuk Login"): 
-            try:
-                options = Options()
-                options.headless = headless
-                options.binary_location = r"C:\Program Files\Mozilla Firefox\firefox.exe"
-                service = Service(executable_path=gecko_path)
-                driver = webdriver.Firefox(service=service, options=options)
-                search_url = f"https://x.com/search?q={query}&f=live"
-                driver.get(search_url)
-                st.session_state.driver = driver
-                st.session_state.driver_active = True
-                st.warning("🕒 Firefox sudah terbuka. Silakan login ke X (Twitter) secara manual, lalu klik tombol di bawah setelah login berhasil.")
-            except Exception as e:
-                st.error(f"Gagal membuka Firefox: {e}")
-                st.error("Pastikan path geckodriver dan Firefox benar.")
-
-    if st.session_state.driver_active:
-        if st.button("Mulai Scraping Sekarang"):
-            with st.spinner("Sedang scraping..."):
-                try:
-                    tweets_data = scrape_tweets(st.session_state.driver, max_scroll=max_scroll)
-                    df = pd.DataFrame(tweets_data, columns=["User", "Text", "Date", "Tweet Link", "Media Links", "Reply To User"])
-                    st.success(f"Scraping selesai, {len(df)} tweet unik ditemukan.")
-                    st.dataframe(df.head(10))
-                    csv = df.to_csv(index=False).encode('utf-8')
-                    st.download_button("Unduh hasil CSV", csv, file_name="tweets_scraped.csv", mime="text/csv")
-                    st.session_state.df_twitter_raw = df 
-                except Exception as e:
-                    st.error(f"Gagal scraping: {e}")
-                finally:
-                    try: st.session_state.driver.quit()
-                    except: pass
-                    st.session_state.driver_active = False
 
 # --- HALAMAN UPLOAD & PROSES DATA ---
 elif page == "Upload & Proses Data":
@@ -410,7 +303,7 @@ elif page == "Upload & Proses Data":
                 st.error(f"Gagal membaca file Twitter: {e}")
 
         if "df_twitter_raw" in st.session_state:
-            df_tw_raw = st.session_state.df_twitter_raw.copy() # Salin agar data asli aman
+            df_tw_raw = st.session_state.df_twitter_raw.copy() 
             if 'Text' not in df_tw_raw.columns:
                 st.error(f"Kolom 'Text' tidak ditemukan di file Twitter. Kolom yang ada: {list(df_tw_raw.columns)}")
             else:
@@ -440,19 +333,13 @@ elif page == "Upload & Proses Data":
                         col_rep2.text("=== SVM ===")
                         col_rep2.text(results['svm_report'])
 
-                        # ==============================================================
-                        # ===       PENAMBAHAN PREVIEW HEAD(5) SEBELUM DOWNLOAD      ===
-                        # ==============================================================
                         st.markdown("---")
                         st.subheader("⬇️ Preview & Unduh Hasil (Before & After)")
                         
                         col_dw1, col_dw2 = st.columns(2)
                         with col_dw1:
                             st.markdown("**Data ASLI (Before)**")
-                            # Menampilkan 5 baris data ASLI
                             st.dataframe(st.session_state['df_twitter_raw'].head(5), use_container_width=True)
-                            
-                            # Siapkan data 'Before'
                             csv_before = st.session_state['df_twitter_raw'].to_csv(index=False).encode('utf-8')
                             st.download_button(
                                 label="Unduh Data ASLI (Before)",
@@ -463,10 +350,7 @@ elif page == "Upload & Proses Data":
                             )
                         with col_dw2:
                             st.markdown("**Data PROSES (After)**")
-                            # Menampilkan 5 baris data PROSES
                             st.dataframe(df_tw_raw.head(5), use_container_width=True)
-                            
-                            # Siapkan data 'After'
                             csv_after = df_tw_raw.to_csv(index=False).encode('utf-8')
                             st.download_button(
                                 label="Unduh Data PROSES (After)",
@@ -475,7 +359,6 @@ elif page == "Upload & Proses Data":
                                 mime="text/csv",
                                 key="btn_tw_after"
                             )
-                        # ===============================================
 
                     except Exception as e:
                         st.error(f"Gagal saat proses Twitter: {e}")
@@ -513,7 +396,7 @@ elif page == "Upload & Proses Data":
         if "df_kues_raw" in st.session_state and text_col_kues:
             if st.button("Mulai Proses Sentimen Kuesioner", key="proses_kues"):
                 try:
-                    df_k_raw = st.session_state.df_kues_raw.copy() # Salin agar data asli aman
+                    df_k_raw = st.session_state.df_kues_raw.copy() 
                     with st.spinner("🔄 Sedang preprocessing (Kuesioner)..."):
                         df_k_raw['clean_text'] = df_k_raw[text_col_kues].astype(str).apply(clean_text)
                     with st.spinner("🔄 Sedang labeling (Kuesioner)..."):
@@ -540,19 +423,13 @@ elif page == "Upload & Proses Data":
                     col_repk2.text("=== SVM ===")
                     col_repk2.text(results['svm_report'])
 
-                    # ==============================================================
-                    # ===       PENAMBAHAN PREVIEW HEAD(5) SEBELUM DOWNLOAD      ===
-                    # ==============================================================
                     st.markdown("---")
                     st.subheader("⬇️ Preview & Unduh Hasil (Before & After)")
                     
                     col_dw_k1, col_dw_k2 = st.columns(2)
                     with col_dw_k1:
                         st.markdown("**Data ASLI (Before)**")
-                        # Menampilkan 5 baris data ASLI
                         st.dataframe(st.session_state['df_kues_raw'].head(5), use_container_width=True)
-                        
-                        # Siapkan data 'Before'
                         csv_before_kues = st.session_state['df_kues_raw'].to_csv(index=False).encode('utf-8')
                         st.download_button(
                             label="Unduh Data ASLI (Before)",
@@ -563,10 +440,7 @@ elif page == "Upload & Proses Data":
                         )
                     with col_dw_k2:
                         st.markdown("**Data PROSES (After)**")
-                        # Menampilkan 5 baris data PROSES
                         st.dataframe(df_k_raw.head(5), use_container_width=True)
-                        
-                        # Siapkan data 'After'
                         csv_after_kues = df_k_raw.to_csv(index=False).encode('utf-8')
                         st.download_button(
                             label="Unduh Data PROSES (After)",
@@ -575,8 +449,7 @@ elif page == "Upload & Proses Data":
                             mime="text/csv",
                             key="btn_kues_after"
                         )
-                    # ===============================================
-
+                
                 except Exception as e:
                     st.error(f"Gagal saat proses Kuesioner: {e}")
 
@@ -603,13 +476,10 @@ elif page == "Visualisasi Hasil":
             st.markdown("#### F1-Score (Data Twitter)")
             res_tw = st.session_state['twitter_model_results']
             data_tw = pd.DataFrame({'Model': ['Naive Bayes', 'SVM'], 'F1 Score': [res_tw['nb_f1'], res_tw['svm_f1']]})
-            # ===============================================
-            # ===     GRAFIK KEMBALI KE WARNA DEFAULT     ===
-            # ===============================================
             fig_f1_tw = px.bar(data_tw, x='Model', y='F1 Score', color='Model', text='F1 Score', range_y=[0,1], 
-                               color_discrete_sequence=['#00C2A8', '#A66CFF']) # <-- Warna asli Anda
+                               color_discrete_sequence=['#00C2A8', '#A66CFF'])
             fig_f1_tw.update_traces(texttemplate='%{text:.2f}', textposition='outside')
-            fig_f1_tw.update_layout(template='plotly_white') # <-- Template putih
+            fig_f1_tw.update_layout(template='plotly_white')
             st.plotly_chart(fig_f1_tw, use_container_width=True)
             best_tw = data_tw.loc[data_tw['F1 Score'].idxmax(), 'Model']
             st.success(f"🏆 Model Twitter terbaik: **{best_tw}**")
@@ -622,9 +492,9 @@ elif page == "Visualisasi Hasil":
             res_ku = st.session_state['kues_model_results']
             data_ku = pd.DataFrame({'Model': ['Naive Bayes', 'SVM'], 'F1 Score': [res_ku['nb_f1'], res_ku['svm_f1']]})
             fig_f1_ku = px.bar(data_ku, x='Model', y='F1 Score', color='Model', text='F1 Score', range_y=[0,1], 
-                               color_discrete_sequence=['#FF6B6B', '#FFD166']) # <-- Warna asli Anda
+                               color_discrete_sequence=['#FF6B6B', '#FFD166'])
             fig_f1_ku.update_traces(texttemplate='%{text:.2f}', textposition='outside')
-            fig_f1_ku.update_layout(template='plotly_white') # <-- Template putih
+            fig_f1_ku.update_layout(template='plotly_white')
             st.plotly_chart(fig_f1_ku, use_container_width=True)
             best_ku = data_ku.loc[data_ku['F1 Score'].idxmax(), 'Model']
             st.success(f"🏆 Model Kuesioner terbaik: **{best_ku}**")
@@ -640,9 +510,9 @@ elif page == "Visualisasi Hasil":
             st.markdown("#### 🍥 Distribusi Sentimen Twitter")
             dfp_tw = st.session_state['df_twitter_processed']
             fig_twitter_pie = px.pie(dfp_tw, names='sentiment', color='sentiment',
-                                     color_discrete_sequence=px.colors.qualitative.Safe, # <-- Warna asli
+                                     color_discrete_sequence=px.colors.qualitative.Safe,
                                      title="Twitter Sentiment Distribution")
-            fig_twitter_pie.update_layout(template='plotly_white') # <-- Template putih
+            fig_twitter_pie.update_layout(template='plotly_white')
             st.plotly_chart(fig_twitter_pie, use_container_width=True)
         else:
             st.info("Data Twitter belum diproses.")
@@ -652,9 +522,9 @@ elif page == "Visualisasi Hasil":
             st.markdown("#### 🍥 Distribusi Sentimen Kuesioner")
             dfp_ku = st.session_state['df_kues_processed']
             fig_kues_pie = px.pie(dfp_ku, names='sentiment', color='sentiment',
-                                  color_discrete_sequence=px.colors.qualitative.Pastel, # <-- Warna asli
+                                  color_discrete_sequence=px.colors.qualitative.Pastel,
                                   title="Kuesioner Sentiment Distribution")
-            fig_kues_pie.update_layout(template='plotly_white') # <-- Template putih
+            fig_kues_pie.update_layout(template='plotly_white')
             st.plotly_chart(fig_kues_pie, use_container_width=True)
         else:
             st.info("Data Kuesioner belum diproses.")
@@ -676,11 +546,11 @@ elif page == "Visualisasi Hasil":
         df_compare['Kuesioner (%)'] = (df_compare['Kuesioner'] / df_compare['Kuesioner'].sum() * 100).round(1)
         
         fig_compare = go.Figure(data=[
-            go.Bar(name='Twitter', x=df_compare['Sentiment'], y=df_compare['Twitter'], marker_color='#00C2A8'), # <-- Warna asli
-            go.Bar(name='Kuesioner', x=df_compare['Sentiment'], y=df_compare['Kuesioner'], marker_color='#A66CFF') # <-- Warna asli
+            go.Bar(name='Twitter', x=df_compare['Sentiment'], y=df_compare['Twitter'], marker_color='#00C2A8'),
+            go.Bar(name='Kuesioner', x=df_compare['Sentiment'], y=df_compare['Kuesioner'], marker_color='#A66CFF')
         ])
         fig_compare.update_layout(
-            barmode='group', template='plotly_white', # <-- Template putih
+            barmode='group', template='plotly_white',
             title="Distribusi Sentimen: Twitter vs Kuesioner",
             xaxis_title="Sentiment", yaxis_title="Jumlah", legend_title="Sumber Data"
         )
